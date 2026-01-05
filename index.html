@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cat Moto</title>
+
+<style>
+  html,body{
+    margin:0;height:100%;background:#000;font-family:'Courier New', monospace;overflow:hidden;
+    /* Prevent scrolling issues in embedded iframes */
+    position:fixed;
+    width:100%;
+    overscroll-behavior:none;
+    -webkit-overflow-scrolling:touch;
+    touch-action:none;
+  }
+  #startScreen{
+    position:fixed;inset:0;background:#7b4a12;box-shadow:inset 0 0 30px rgba(0,0,0,0.4);
+    z-index:100;color:#fff;
+    display:flex;align-items:center;justify-content:center;flex-direction:column; 
+    touch-action:none;
+  }
+  #playBtn{
+    padding:12px 28px;background:#ff4df0;border:none;border-radius:8px;
+    color:#fff;font-size:20px;cursor:pointer;
+    touch-action:manipulation;
+  }
+  #pauseBtn{
+    position:fixed;top:16px;right:16px;padding:10px 16px;background:#ff4df0;
+    border:none;border-radius:8px;color:#fff;cursor:pointer;z-index:45;display:none;
+    touch-action:manipulation;
+  }
+  #fullscreenBtn{
+    position:fixed;bottom:16px;left:16px;padding:10px 16px;background:#ff4df0;
+    border:none;border-radius:8px;color:#fff;cursor:pointer;z-index:45;display:none;
+    touch-action:manipulation;
+  }
+  #endScreen{
+    position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    flex-direction:column;background:#7b4a12;box-shadow:inset 0 0 30px rgba(0,0,0,0.4);
+    z-index:100;color:#fff;
+    touch-action:none;
+  }
+  #restartBtn,#freshBtn{
+    margin-top:12px;padding:10px 18px;background:#ff4df0;border:none;
+    border-radius:10px;color:#fff;cursor:pointer;
+    touch-action:manipulation;
+  }
+  canvas{
+    display:none;position:fixed;inset:0;z-index:10;background:#071016;
+    touch-action:none;
+  }
+  #hint{
+    position:fixed;left:16px;top:16px;padding:10px 16px;background:#ff4df0;
+    border:none;border-radius:8px;color:#fff;font-size:16px;z-index:60;
+  }
+
+  /* ================================
+     MOBILE BUTTONS
+     ================================ */
+  #mobileControls{
+    display:none;
+    position:fixed;
+    right:14px;
+    bottom:20px;
+    z-index:70;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .mobBtn{
+    width:50px;
+    height:50px;
+    background:#ff4df0;
+    opacity:0.6;
+    border-radius:50%;
+    border:none;
+    color:white;
+    font-size:24px;
+    font-weight:bold;
+    touch-action:manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (max-width:900px){
+    #mobileControls{ display:flex; }
+  }
+
+  /* ================================
+     BOX ANIMATION FLAPS
+     ================================ */
+  .flap {
+    position: fixed;
+    background: #7b4a12;
+    transform-origin: center;
+    transition: transform 1s ease;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.4);
+    z-index: 100;
+  }
+
+  /* LEFT flap */
+  #flap1 {
+    width: 50vw;
+    height: 100vh;
+    left: 0;
+    top: 0;
+    transform-origin: left center;
+    transform: rotateY(0deg);
+  }
+
+  /* RIGHT flap */
+  #flap2 {
+    width: 50vw;
+    height: 100vh;
+    right: 0;
+    top: 0;
+    transform-origin: right center;
+    transform: rotateY(0deg);
+  }
+
+  /* TOP flap */
+  #flap3 {
+    width: 100vw;
+    height: 50vh;
+    top: 0;
+    left: 0;
+    transform-origin: top center;
+    transform: rotateX(0deg);
+  }
+
+  /* BOTTOM flap */
+  #flap4 {
+    width: 100vw;
+    height: 50vh;
+    bottom: 0;
+    left: 0;
+    transform-origin: bottom center;
+    transform: rotateX(0deg);
+  }
+
+  /* OPEN STATES */
+  .step1 #flap1 {
+    transform: rotateY(-120deg);
+  }
+  .step2 #flap2 {
+    transform: rotateY(120deg);
+  }
+  .step3 #flap3 {
+    transform: rotateX(-120deg);
+  }
+  .step4 #flap4 {
+    transform: rotateX(120deg);
+  }
+</style>
+</head>
+<body>
+
+<!-- Box Flaps -->
+<div id="flap1" class="flap"></div>
+<div id="flap2" class="flap"></div>
+<div id="flap3" class="flap"></div>
+<div id="flap4" class="flap"></div>
+
+<!-- Start Screen -->
+<div id="startScreen">
+  <h1 style="text-align: center; margin:0 0 10px 0">SCHRÖZ CAT MOTO <br> 
+  ฅ(•˕ •マ.ᐟ <br>
+／|￣￣￣￣|＼ <br>
+  | <button id="playBtn">Play</button> | <br>
+  |_______|
+
+  </h1> 
+  <div style="text-align: center; margin-top:10px;color:#aaa;font-size:16px;">
+    Collect Heart Coins & Avoid Error Obstacles <br> 
+    Use ArrowUp/Down or W/S to switch lanes <br>
+    Good Luck!
+  </div>
+</div>
+
+<button id="pauseBtn">Pause</button>
+
+<!--Fullscreen Button-->
+<button id="fullscreenBtn">⛶</button>
+
+<!--End Screen-->
+<div id="endScreen">
+  <h2 id="finalScore">Game Over</h2>
+  <div style="text-align:center;margin-top:6px;margin-bottom:6px;font-size:16px;";>
+     ฅᨐฅ  <br>
+  |￣￣￣￣￣￣| <br>
+   Score: <br> <span id="finalScoreValue">0</span> <br>
+  |__________|
+  </div>
+  <div style="margin-top: 10px">
+    <button id="restartBtn">+1 Speed</button>
+    <button id="freshBtn">Try Again</button>
+  </div>
+</div>
+
+<!-- Game -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- HUD -->
+<div id="hint">
+  Lives: <span id="hudLives">9</span><br>
+  Score: <span id="hudScore">0</span>
+</div>
+
+<!-- Mobile Controls -->
+<div id="mobileControls">
+  <button class="mobBtn" id="btnUp">▲</button>
+  <button class="mobBtn" id="btnDown">▼</button>
+</div>
+
+<script>
+/* ============================
+   BOX ANIMATION FUNCTIONS
+   ============================ */
+function openBoxSequence() {
+  document.body.classList.add("step4");
+  setTimeout(() => document.body.classList.add("step3"), 700);
+  setTimeout(() => document.body.classList.add("step2"), 1400);
+  setTimeout(() => document.body.classList.add("step1"), 2100);
+}
+
+function closeBoxSequence() {
+  document.body.classList.remove("step1");
+  setTimeout(() => document.body.classList.remove("step2"), 1000);
+  setTimeout(() => document.body.classList.remove("step3"), 2000);
+  setTimeout(() => document.body.classList.remove("step4"), 3000);
+}
+
+/* ============================
+   ASSET PATHS
+   ============================ */
+const ASSETS = {
+  background: "city-bg-3.png",
+  bike: "schr0ridingbike3.png",
+  coin: "heart-coin.png",
+  obstacle: "error-obstacle.png"
+};
+
+/* DOM ELEMENTS */
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const playBtn = document.getElementById("playBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+const restartBtn = document.getElementById("restartBtn");
+const freshBtn = document.getElementById("freshBtn");
+
+const startScreen = document.getElementById("startScreen");
+const endScreen = document.getElementById("endScreen");
+
+const hudLives = document.getElementById("hudLives");
+const hudScore = document.getElementById("hudScore");
+const finalScoreValue = document.getElementById("finalScoreValue");
+
+/* ============================
+   CANVAS RESIZE
+   ============================ */
+function resizeCanvas(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const aspectRatio = canvas.width / canvas.height;
+
+  if (aspectRatio > 1.7) {
+    bikeLaneCenters = [
+      canvas.height * 0.78,
+      canvas.height * 0.83,
+      canvas.height * 0.90
+    ];
+  } else {
+    bikeLaneCenters = [
+      canvas.height * 0.76,
+      canvas.height * 0.81,
+      canvas.height * 0.89
+    ];
+  }
+
+  obstacleLaneCenters = bikeLaneCenters.slice();
+  coinLaneCenters = bikeLaneCenters.slice();
+}
+
+window.addEventListener("resize", () => {
+    resizeCanvas();
+
+    // Re-center bike horizontally 
+    bike.x = (canvas.width/2) - 180;
+
+    // Reposition bike vertically to match current lane 
+    bike.y = bikeLaneCenters[bike.lane] - bike.height/2;
+});
+
+/* ============================
+   GAME STATE
+   ============================ */
+let bikeLaneCenters = [];
+let obstacleLaneCenters = [];
+let coinLaneCenters = [];
+
+let bgImg = new Image();
+let bikeImg = new Image();
+let coinImg = new Image();
+let obstacleImg = new Image();
+
+let bgX = 0;
+let baseScrollSpeed = 4;
+let scrollSpeed = baseScrollSpeed;
+let bikeSway = 0;
+
+let gameRunning = false;
+let paused = false;
+let rafId = null;
+let lastTimestamp = 0;
+
+let bike = {
+  x: (window.innerWidth/2) - 180,
+  lane: 1,
+  y: 0,
+  width: 240,
+  height: 160
+};
+
+let obstacles = [];
+let coins = [];
+
+let score = 0;
+let lives = 9;
+
+let spawn = {
+  lastObstacle: 0,
+  lastCoin: 0,
+  obstacleInterval: 1700,
+  coinInterval: 1200
+};
+
+resizeCanvas();
+
+let keys = {};
+
+// Block all scroll-causing keys
+const BLOCK_KEYS = [
+    "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ",
+    "PageUp", "PageDown", "Home", "End"
+];
+
+window.addEventListener("keydown", e => {
+  keys[e.key] = true;
+  // Prevent arrow keys and space from scrolling the page
+  if(BLOCK_KEYS.includes(e.key)) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+window.addEventListener("keyup", e => {
+  keys[e.key] = false;
+  // Prevent arrow keys and space from scrolling the page
+  if(BLOCK_KEYS.includes(e.key)) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+// Prevent ALL touch scrolling 
+window.addEventListener("touchmove", e => {
+    e.preventDefault();
+}, { passive: false }); 
+
+// Prevent default touch behavior on mobile control buttons
+document.addEventListener('touchstart', function(e) {
+  if (e.target.classlist && e.target.classList.contains("mobBtn")) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+// Ensure focus for embedded iframe 
+window.addEventListener("pointerdown", () => {
+    window.focus();
+});
+
+// Prevent double-tap zoom on mobile
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(e) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+    }
+    lastTouchEnd = now;
+}, { passive: false });
+
+const obstacleWidth = 120;
+const obstacleHeight = 80;
+const coinWidth = 80;
+const coinHeight = 80;
+
+let obstacleYOffset = 55;
+let coinYOffset = 45;
+
+/* ============================
+   LOAD ASSETS
+   ============================ */
+function loadAssets(callback){
+  let needed = 2;
+
+  function done(){
+    needed--;
+    if (needed === 0) callback();
+  }
+
+  bgImg.onload = done; bgImg.onerror = done;
+  bikeImg.onload = done; bikeImg.onerror = done;
+
+  bgImg.src = ASSETS.background;
+  bikeImg.src = ASSETS.bike;
+
+  coinImg.onload = () => {};
+  coinImg.onerror = () => { coinImg = null; };
+  coinImg.src = ASSETS.coin;
+
+  obstacleImg.onload = () => {};
+  obstacleImg.onerror = () => { obstacleImg = null; };
+  obstacleImg.src = ASSETS.obstacle;
+}
+
+/* ============================
+   START GAME
+   ============================ */
+playBtn.addEventListener("click", () => {
+  startScreen.style.display = "none";
+  // Start box opening animation
+  openBoxSequence();
+  
+  // Wait for animation to complete, then show game
+  setTimeout(() => {
+    canvas.style.display = "block";
+    pauseBtn.style.display = "block";
+    fullscreenBtn.style.display = "block";
+    startGame(true);
+  }, 1400);
+});
+
+/* Fullscreen Toggle */
+fullscreenBtn.addEventListener("click", () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.log('Error attempting to enable fullscreen: ${err.message}');
+    });
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  }
+});
+
+// Update button text based on fullscreen state
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement) {
+    fullscreenBtn.textContent = "Exit ⛶"; 
+  } else {
+    fullscreenBtn.textContent = "⛶";
+  }
+
+  // Trigger resize calculation when fullscreen changes
+  setTimeout(() => {
+    resizeCanvas();
+  }, 200); // Small delay to ensure fullscreen transition completes
+}); 
+
+/* Fresh Restart */
+freshBtn.addEventListener("click", () => {
+  stopGame();
+  baseScrollSpeed = 3;
+  scrollSpeed = baseScrollSpeed;
+  spawn.obstacleInterval = 1700;
+  spawn.coinInterval = 1200;
+  
+endScreen.style.display = "none";
+
+  // Start box opening animation
+  openBoxSequence();
+  
+  // Wait for animation, then show start screen
+  setTimeout(() => {
+    canvas.style.display = "block";
+    pauseBtn.style.display = "block";
+    fullscreenBtn.style.display = "block";
+    startGame(true);
+  }, 1400);
+});
+
+/* Return to Start (increase speed) */
+restartBtn.addEventListener("click", () => {
+  stopGame();
+  baseScrollSpeed += 0.6;
+  scrollSpeed = baseScrollSpeed;
+
+endScreen.style.display = "none";
+
+  openBoxSequence();
+  
+  // Wait for animation to complete, then show game
+  setTimeout(() => {
+    canvas.style.display = "block";
+    pauseBtn.style.display = "block";
+    fullscreenBtn.style.display = "block";
+    startGame(true);
+  }, 1400);
+});
+
+function startGame(isFresh){
+  score = 0;
+  lives = 9;
+
+  hudLives.innerText = lives;
+  hudScore.innerText = score;
+
+  obstacles = [];
+  coins = [];
+
+  bike.lane = 1;
+  bike.y = bikeLaneCenters[1] - bike.height/2;
+
+  bgX = 0;
+  paused = false;
+  gameRunning = true;
+
+  scrollSpeed = baseScrollSpeed;
+
+  loadAssets(() => {
+    lastTimestamp = performance.now();
+    rafId = requestAnimationFrame(gameLoop);
+  });
+}
+
+/* ============================
+   PAUSE
+   ============================ */
+pauseBtn.addEventListener("click", () => {
+  if (!gameRunning) return;
+  paused = !paused;
+  pauseBtn.textContent = paused ? "Resume" : "Pause";
+  if (!paused){
+    lastTimestamp = performance.now();
+    rafId = requestAnimationFrame(gameLoop);
+  }
+});
+
+/* ============================
+   STOP & END GAME
+   ============================ */
+function stopGame(){
+  gameRunning = false;
+  paused = false;
+  if (rafId){ cancelAnimationFrame(rafId); rafId = null; }
+}
+
+function endGame(){
+  stopGame();
+  
+  // Start box closing animation
+  closeBoxSequence();
+  
+  // Wait for animation, then show end screen
+  setTimeout(() => {
+    canvas.style.display = "none";
+    pauseBtn.style.display = "none";
+    fullscreenBtn.style.display = "none";
+    endScreen.style.display = "flex";
+    finalScoreValue.textContent = score;
+  }, 4000);
+}
+
+/* ============================
+   MAIN LOOP
+   ============================ */
+function gameLoop(timestamp){
+  if (!gameRunning){ return; }
+  if (paused){ rafId = requestAnimationFrame(gameLoop); return; }
+
+  const dt = timestamp - lastTimestamp;
+  lastTimestamp = timestamp;
+
+  update(timestamp, dt);
+  draw();
+
+  rafId = requestAnimationFrame(gameLoop);
+}
+
+/* ============================
+   UPDATE
+   ============================ */
+function update(time, dt){
+  bgX -= scrollSpeed * (dt/16.67);
+  if (bgX <= -canvas.width) bgX = 0;
+
+  if (keys["ArrowUp"] || keys["w"] || keys["W"]){
+    bike.lane = Math.max(0, bike.lane - 1);
+    bike.y = bikeLaneCenters[bike.lane] - bike.height/2;
+    keys["ArrowUp"] = keys["w"] = keys["W"] = false;
+  }
+  if (keys["ArrowDown"] || keys["s"] || keys["S"]){
+    bike.lane = Math.min(2, bike.lane + 1);
+    bike.y = bikeLaneCenters[bike.lane] - bike.height/2;
+    keys["ArrowDown"] = keys["s"] = keys["S"] = false;
+  }
+
+  if (time - spawn.lastObstacle > spawn.obstacleInterval){
+    const lane = Math.floor(Math.random()*3);
+    const c = obstacleLaneCenters[lane];
+    obstacles.push({
+      x: canvas.width + 120,
+      lane,
+      y: c - obstacleHeight/2 + obstacleYOffset,
+      w: obstacleWidth,
+      h: obstacleHeight,
+      speed: 4 + Math.random()*1.4
+    });
+    spawn.lastObstacle = time;
+  }
+
+  if (time - spawn.lastCoin > spawn.coinInterval){
+    const lane = Math.floor(Math.random()*3);
+    const c = coinLaneCenters[lane];
+    coins.push({
+      x: canvas.width + 120,
+      lane,
+      y: c - coinHeight/2 + coinYOffset,
+      w: coinWidth,
+      h: coinHeight,
+      speed: 3.5 + Math.random()*1.2
+    });
+    spawn.lastCoin = time;
+  }
+
+  obstacles.forEach(o => o.x -= o.speed * (dt/16.67));
+  coins.forEach(c => c.x -= c.speed * (dt/16.67));
+
+  for (let i = obstacles.length-1; i>=0; i--){
+    let o = obstacles[i];
+    if (o.lane === bike.lane && rectOverlapX(bike.x,bike.width,o.x,o.w)){
+      obstacles.splice(i,1);
+      lives--;
+      hudLives.textContent = lives;
+      if (lives <= 0){ endGame(); return; }
+    }
+  }
+
+  for (let i = coins.length-1; i>=0; i--){
+    let c = coins[i];
+    if (c.lane === bike.lane && rectOverlapX(bike.x,bike.width,c.x,c.w)){
+      coins.splice(i,1);
+      score++;
+      hudScore.textContent = score;
+    }
+  }
+
+  obstacles = obstacles.filter(o => o.x > -300);
+  coins = coins.filter(c => c.x > -300);
+}
+
+/* ============================
+   DRAW
+   ============================ */
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.drawImage(bgImg, bgX, 0, canvas.width, canvas.height);
+  ctx.drawImage(bgImg, bgX + canvas.width, 0, canvas.width, canvas.height);
+
+  obstacles.forEach(o => {
+    if (obstacleImg) ctx.drawImage(obstacleImg, o.x, o.y, o.w, o.h);
+  });
+
+  coins.forEach(c => {
+    if (coinImg) ctx.drawImage(coinImg, c.x, c.y, c.w, c.h);
+  });
+
+  bikeSway += 0.05;
+  const sway = Math.sin(bikeSway)*4;
+  ctx.drawImage(bikeImg, bike.x, bike.y + sway, bike.width, bike.height);
+}
+
+/* ============================
+   Collision Helper
+   ============================ */
+function rectOverlapX(ax,aw,bx,bw){
+  return ax < bx + bw && ax + aw > bx;
+}
+
+/* ============================
+   MOBILE TAP CONTROLS
+   ============================ */
+document.getElementById("btnUp").addEventListener("click", () => {
+  if (!gameRunning || paused) return;
+  bike.lane = Math.max(0, bike.lane - 1);
+  bike.y = bikeLaneCenters[bike.lane] - bike.height/2;
+});
+
+document.getElementById("btnDown").addEventListener("click", () => {
+  if (!gameRunning || paused) return;
+  bike.lane = Math.min(2, bike.lane + 1);
+  bike.y = bikeLaneCenters[bike.lane] - bike.height/2;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Ignore everything by default
+*
+
+# Allow required root files
+!index.html
+!.gitignore
+
+# Allow game image assets in root
+!city-bg-3.png
+!schr0ridingbike3.png
+!heart-coin.png
+!error-obstacle.png 
